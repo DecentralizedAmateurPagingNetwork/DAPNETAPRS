@@ -19,7 +19,7 @@ aprsis = dict(
 	username = '', #APRS-IS callsign
 	password = '', #APRS-IS pass code
 	sourcecall = '', #source call when placing objects
-	apikey = "8881.Nba3ye37KpRWrA" #APRS-IS API key
+	apikey = '' #APRS-IS API key
 )
 
 misc = dict(
