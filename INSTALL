@@ -1,0 +1,62 @@
+# Installation instructions for the dapaprs.py script.
+# The first section of this file explains the way to get everything up and running. 
+# Scroll down to read more details about this script.
+# Initiative of DAPNet, RWTH Aachen (DL)
+# Ronald Bouwens - PE2KMV, April 27, 2017
+
+INSTALLATION
+============
+The steps below will guide through a successful installation of this script.
+1. The script is Python 2.x based.
+
+2. Read carefully through the file DEPENDENCIES and make sure all necessary libraries have been installed.
+
+3. Copy the files to a directory of your choice, out of reach of any server application.
+
+4. Open the config.py file with your favorite editor and complete the necessary parameters:
+
+4a. [user]username = DAPNet username
+
+4b. [user]password = DAPNET password
+
+4c. [user]datenotation = country code to determine date notation (options: 'en'/'de'/'nl'). This setting is not used for DAPNET APRS, but ensures compatibility with the DAPWeather.py script.
+
+4c. [dapnet]callsign = target call to send pager messages. This setting is not used for DAPNET APRS, but ensures compatibility with the DAPWeather.py script.
+
+4d. [dapnet]transmittergrp = transmitter group to set the range of sent messages. This setting is not used for DAPNET APRS, but ensures compatibility with the DAPWeather.py script.
+
+4e. [dapnet]baseurl = URL of the DAPNet API. No trailing slash please!
+
+4f. [dapnet]coreurl = path to the API to sent messages via DAPNet. This setting is not used for DAPNET APRS, but ensures compatibility with the DAPWeather.py script.
+
+4g. [dapnet]trxurl = path to the API to query the list of transmitters.
+
+4h. [aprsis]username = APRS-IS callsign / username.
+
+4i. [aprsis]password = APRS passcode.
+
+4j. [aprsis]sourcecall = callsign which will be listed as owner of the sent objects.
+
+4k. [aprsis]apikey = APRS-IS API key (not needed yet, but included for any future purposes).
+
+4l. [misc]logfile = path and name of the logfile used for any error messages. Make sure you have the correct access rights for the file of your choice.
+
+5. The file config.py is the only place to adjust settings. No changes are to be made in any other file.
+ 
+6. schedule a cron job to run this script on certain intervals. Don't flood APRS-IS by running the script on short intervals. Longer intervals also means a longer latency time where transmitter status changes are not immediately visible via APRS.
+
+7. if you don't see objects appearing after the script has been triggered (manually), check out the cron log file and the dapaprs.log file (tail -f [logfile])
+
+PURPOSE
+=======
+The dapaprs.py script is meant to visualize DAPNET paging transmitters as objects via APRS-IS.
+
+DETAILS
+=======
+When running the script the DAPNet core server is connected via the API. If no connection to the core server is available (for any reason), the script writes an error message to the console and the log file and quits. Conditions for a successful connections are valid DAPNet credentials.
+
+Furthermore a connection to APRS-IS will be established. If the connection fails, again an error message will be written to the console and the log file. Then the script quits. For this connection a valid ham radio call sign and the corresponding APRS passcode is required.
+
+After successful connecting to the coreserver details of the known DAPNet transmitters are downloaded. For any known transmitter the DAPNet details are converted into an APRS string, including the digipeater symbol with the 'P' character as overlay. The comment section of the APRS string contains the generic text 'DAPNET POCSAG Transmitter', followed by the timeslots the transmitter uses and the status of the transmitter (ONLINE / OFFLINE).
+
+Furthermore for ONLINE transmitters the string contains the '*' character to flag the creation of the object. For OFFLINE transmitters the '_' character flags killing the object. However the website aprs.fi doesn't support killing objects, which means also OFFLINE transmitters will be shown. Viewing the object's details will reveal the status definitely.

@@ -166,7 +166,7 @@ for tx in range (0, len(dapnetdata)):
 	#transmitters with status ERROR are ignored
 	if mytx['status'] != "ERROR":
 		try:
-#			AIS.sendall(data)
+			AIS.sendall(data)
 			print(data) #print the APRS message string to the console
 			sleep(0.3)
 		except:
