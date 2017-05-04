@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
@@ -14,8 +14,8 @@
 
 # Author: Ralf Wilke DH3WR  dh3wr atREMOVETHIS darc .REMOVETHIS de
 # Author: Ronald Bouwens PE2KMV pe2kmv atREMOVETHIS gmail .REMOVETHISPART c0m
-# Date: 25.04.2017
-# Version 0.1
+# Date: 05.05.2017
+# Version 0.2
 
 import aprslib
 import logging
@@ -24,41 +24,51 @@ from time import sleep
 from datetime import datetime
 from aprslib.packets.base import APRSPacket
 from aprslib.util import latitude_to_ddm, longitude_to_ddm, comment_altitude
-import urllib2
+import urllib3
 import json
 import base64
 import math
-import config
 import sys
+import configparser
 
 
-logging.basicConfig(filename='dapnetaprs.log',level=logging.CRITICAL) # level=50
+logging.basicConfig(filename='dapnet.log',level=logging.CRITICAL) # level=50
 
-#DAPNET credentials and API URL are read from config file
-hampagerusername = config.user['username']
-hampagerpassword = config.user['password']
-hampagerurl = config.dapnet['baseurl'] + config.dapnet['trxurl']
-
-#APRS-IS credentials and settings are read from the config file
-aprsisusername = config.aprsis['username']
-aprsispassword = config.aprsis['password']
-aprsissourcecallsign = config.aprsis['sourcecall']
+#assign configuration file
+cfg = configparser.RawConfigParser()
+try:
+	#attempt to read the config file config.cfg
+	cfg.read('config.cfg')
+except:
+	#no luck reading the config file, write error and bail out
+	logger.error('APRS script could not find / read config file')
+	sys.exit(0)
 
 #setup the logging system. Error logs are written in logfile as determined by config
-logger = logging.getLogger('dapnetaprs')
-handler = logging.FileHandler(config.misc['logfile'])
+logger = logging.getLogger('dapnet')
+handler = logging.FileHandler(cfg.get('misc','logfile'))
 logformat = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
 handler.setFormatter(logformat)
 logger.addHandler(handler)
 logger.setLevel(logging.WARNING)
+
+#DAPNET credentials and API URL are read from config file
+hampagerusername = cfg.get('user','username')
+hampagerpassword = cfg.get('user','password')
+hampagerurl = cfg.get('dapnet','baseurl') + cfg.get('dapnet','trxurl')
+
+#APRS-IS credentials and settings are read from the config file
+aprsisusername = cfg.get('aprsis','username')
+aprsispassword = cfg.get('aprsis','password')
+aprsissourcecallsign = cfg.get('aprsis','sourcecall')
 
 #create a PHG code using TRX power, antenna height and antenna gain from DAPNET data
 def encodePHG (power, height, gain, dir):
 	p = round(math.sqrt(power))
 	if p > 9:
 		p = 9
-        if height <= 0:
-			h = 0
+	if height <= 0:
+		h = 0
 	else:
 	    h = round(math.log(height/10/0.3048,2))
 	if h > 9:
@@ -87,12 +97,12 @@ else:
 	#connection to APRS-IS has been established, now continue
 	
 	#create the complete URL to send to DAPNET
-	request = urllib2.Request(hampagerurl)
-	base64string = base64.b64encode('%s:%s' % (hampagerusername, hampagerpassword))
-	request.add_header("Authorization", "Basic %s" % base64string)
+	http = urllib3.PoolManager()
+	headers = urllib3.util.make_headers(basic_auth= hampagerusername + ':' + hampagerpassword)
+
 try:
 	#try to establish connection to DAPNET
-	response = urllib2.urlopen(request)
+	response = http.request('GET',hampagerurl,headers=headers)
 except:
 	#connection to DAPNET failed, write warning to console, write warning to error log then bail out
 	print('Invalid DAPNET credentials')
@@ -100,7 +110,7 @@ except:
 	sys.exit(0)
 else:
 	#connection to DAPNET has been established, continue
-	dapnetdata = json.loads(response.read())
+	dapnetdata = json.loads(response.data.decode('utf-8'))
 
 #loop through all transmitters returned in dapnetdata variable
 for tx in range (0, len(dapnetdata)):
@@ -167,7 +177,7 @@ for tx in range (0, len(dapnetdata)):
 	if mytx['status'] != "ERROR":
 		try:
 			AIS.sendall(data)
-			print(data) #print the APRS message string to the console
+#			print(data) #print the APRS message string to the console
 			sleep(0.3)
 		except:
 			#APRS string could not be sent, log error, log string then continue

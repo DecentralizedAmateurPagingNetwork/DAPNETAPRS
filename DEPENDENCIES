@@ -3,4 +3,9 @@ https://github.com/rossengeorgiev/aprs-python
 
 Infos on aprs-python: http://aprs-python.readthedocs.io/en/stable/examples.html
 
+python3-pip
+aprslib
+python-urllib3
+python3-configparser
+
 These are not necessary all depencendies.
