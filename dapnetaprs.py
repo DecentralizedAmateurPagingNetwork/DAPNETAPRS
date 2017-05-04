@@ -31,7 +31,7 @@ import math
 import sys
 import configparser
 
-logging.basicConfig(filename='dapnet.log',level=logging.CRITICAL) # level=50
+logging.basicConfig(filename='dapnet.log',level=logging.CRITICAL)
 
 #assign configuration file
 cfg = configparser.RawConfigParser()
