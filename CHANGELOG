@@ -1,0 +1,8 @@
+May 5th. 2017
+- restyled configuration file to be read via configparser
+- switched to urllib3, redesigned http request procedure
+- removed indent error in PHG conversion
+- extended DEPENDENCIES
+- added CHANGELOG
+- edited INSTALL
+- distinguish between online and offline transmitters by symbol

@@ -17,5 +17,6 @@ Example: ``DH3WR-3>APRS,TCPIP*:;PS-DB0SDA*240909z5000.60NP00600.60E#PHG2230Testi
 * Add owner in comment text from curl answer
 
 Symbol is:
-* Overlay ``P``
+* Overlay for online transmitter ``P``
+* Overlay for offline transmitter ``X``
 * Symbol ``#``

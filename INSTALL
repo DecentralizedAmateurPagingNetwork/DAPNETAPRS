@@ -2,18 +2,18 @@
 # The first section of this file explains the way to get everything up and running. 
 # Scroll down to read more details about this script.
 # Initiative of DAPNet, RWTH Aachen (DL)
-# Ronald Bouwens - PE2KMV, April 27, 2017
+# Ronald Bouwens - PE2KMV, May 11th, 2017
 
 INSTALLATION
 ============
 The steps below will guide through a successful installation of this script.
-1. The script is Python 2.x based.
+1. The script is Python 3.x based.
 
 2. Read carefully through the file DEPENDENCIES and make sure all necessary libraries have been installed.
 
 3. Copy the files to a directory of your choice, out of reach of any server application.
 
-4. Open the config.py file with your favorite editor and complete the necessary parameters:
+4. Create a copy of the file config-default.cfg and rename it to config.py. Open the config.py file with your favorite editor and complete the necessary parameters:
 
 4a. [user]username = DAPNet username
 
@@ -49,7 +49,7 @@ The steps below will guide through a successful installation of this script.
 
 PURPOSE
 =======
-The dapaprs.py script is meant to visualize DAPNET paging transmitters as objects via APRS-IS.
+The dapaprs.py script is meant to visualize DAPNET paging transmitters as objects via APRS-IS. Online transmitters will be shown as green stars with a 'P', offline transmitters will be shown as red triangles with the character 'P'. All objects have a name beginning with 'PS-' followed by the callsign of the transmitter.
 
 DETAILS
 =======
@@ -59,4 +59,4 @@ Furthermore a connection to APRS-IS will be established. If the connection fails
 
 After successful connecting to the coreserver details of the known DAPNet transmitters are downloaded. For any known transmitter the DAPNet details are converted into an APRS string, including the digipeater symbol with the 'P' character as overlay. The comment section of the APRS string contains the generic text 'DAPNET POCSAG Transmitter', followed by the timeslots the transmitter uses and the status of the transmitter (ONLINE / OFFLINE).
 
-Furthermore for ONLINE transmitters the string contains the '*' character to flag the creation of the object. For OFFLINE transmitters the '_' character flags killing the object. However the website aprs.fi doesn't support killing objects, which means also OFFLINE transmitters will be shown. Viewing the object's details will reveal the status definitely.
+Furthermore for ONLINE transmitters the string contains the '*' character to flag the creation of the object. For OFFLINE transmitters the '_' character flags killing the object. However the website aprs.fi doesn't support killing objects, which means also OFFLINE transmitters will be shown. Therefore online transmitters will be represented as a green star symbol. Offline transmitters will be shown as a red triangle symbol.
