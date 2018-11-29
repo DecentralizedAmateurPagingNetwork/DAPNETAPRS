@@ -15,7 +15,7 @@
 # Author: Ralf Wilke DH3WR  dh3wr atREMOVETHIS darc .REMOVETHIS de
 # Author: Ronald Bouwens PE2KMV pe2kmv atREMOVETHIS gmail .REMOVETHISPART c0m
 # Date: 11.05.2017
-# Version 1.0
+# Version 1.1
 
 import aprslib
 import logging
@@ -31,6 +31,7 @@ import math
 import sys
 import configparser
 import os
+import MySQLdb
 
 logging.basicConfig(filename='dapnet.log',level=logging.CRITICAL)
 
@@ -63,6 +64,28 @@ hampagerurl = cfg.get('dapnet','baseurl') + cfg.get('dapnet','trxurl')
 aprsisusername = cfg.get('aprsis','username')
 aprsispassword = cfg.get('aprsis','password')
 aprsissourcecallsign = cfg.get('aprsis','sourcecall')
+
+#read settings to access masking database
+maskserver = cfg.get('maskdb','server')
+maskuser = cfg.get('maskdb','username')
+maskpasswd = cfg.get('maskdb','passwd')
+maskdatabase = cfg.get('maskdb','database')
+
+#open database connection
+try:
+	db = MySQLdb.connect(host=maskserver,user=maskuser,passwd=maskpasswd,db=maskdatabase)
+except:
+	#can't connect to database, bail out
+	logger.error('No connection to masking database')
+	sys.exit()
+
+#read entries from masking database
+cur = db.cursor()
+cur.execute("SELECT MASK_CALL FROM masktable")
+excl_result = cur.fetchall()
+excl_list = []
+for row in excl_result:
+	excl_list.append(row[0])
 
 #create a PHG code using TRX power, antenna height and antenna gain from DAPNET data
 def encodePHG (power, height, gain, dir):
@@ -117,68 +140,62 @@ else:
 #loop through all transmitters returned in dapnetdata variable
 for tx in range (0, len(dapnetdata)):
 	mytx = dapnetdata[tx] #get the station call
-	longitude = float(mytx['longitude']) #station longitude
-	latitude = float(mytx['latitude']) #station latitude
-	format = 'uncompressed' #aprs coordinates format
-	if mytx['status'] == 'ONLINE': #determine whether DAPNET returns status ONLINE / OFFLINE
+	if (mytx['status'] == 'ONLINE') & (mytx['name'].upper() not in excl_list):
+		longitude = float(mytx['longitude']) #station longitude
+		latitude = float(mytx['latitude']) #station latitude
+		format = 'uncompressed' #aprs coordinates format
 		#pager transmitter is online, add in 'create object' symbol
 		active = '*'
 		symbol = '#' #green digi star - transmitter online
-	else:
-		#pager transmitter is offline, add in 'kill object' symbol
-		#note that aprs.fi doesn't support killing objects!
-		active = '_'
-		symbol = 'n' #red triangle - transmitter offline
 
-	callsign = mytx['name'].upper() #station call is converted into upper case
+		callsign = mytx['name'].upper() #station call is converted into upper case
 	
-	# Crop callsign to 6 characters
-	if len(callsign) > 6:
-		callsign = callsign[:6]
-	callsign = "{:<6}".format(callsign)
-	symbol_table = 'P' #add in APRS symbol character
-#	symbol = '#' #add in APRS symbol
-	altitude = None #don't use altitude
-	comment = 'DAPNET POCSAG Transmitter(' #add comment to object
-	timeSlots = mytx['timeSlot'] + ')' #extract timeslots for station
-	status = '(' + mytx['status'] + ')'
-	timestamp = datetime.utcfromtimestamp(time.time()).strftime("%d%H%M") + 'z'
+		# Crop callsign to 6 characters
+		if len(callsign) > 6:
+			callsign = callsign[:6]
+		callsign = "{:<6}".format(callsign)
+		symbol_table = 'P' #add in APRS symbol character
+	#	symbol = '#' #add in APRS symbol
+		altitude = None #don't use altitude
+		comment = 'DAPNET POCSAG Transmitter(' #add comment to object
+		timeSlots = mytx['timeSlot'] + ')' #extract timeslots for station
+		status = '(' + mytx['status'] + ')'
+		timestamp = datetime.utcfromtimestamp(time.time()).strftime("%d%H%M") + 'z'
 	
-	#differentiate between omnidirectonal antenna or beam
-	if mytx['antennaType'] == 'OMNI':
-		direction = -1 #add in string to mark 'omnidirectional'
-	else:
-		direction = mytx['antennaDirection'] #add in beaming direction if applicable
+		#differentiate between omnidirectonal antenna or beam
+		if mytx['antennaType'] == 'OMNI':
+			direction = -1 #add in string to mark 'omnidirectional'
+		else:
+			direction = mytx['antennaDirection'] #add in beaming direction if applicable
 
-	#jump back and calculate PHG code with DAPNET data as input
-	phg = encodePHG(float(mytx['power']),float(mytx['antennaAboveGroundLevel']),float(mytx['antennaGainDbi']),direction)
-	if active == '_':
-		pgh = ''
+		#jump back and calculate PHG code with DAPNET data as input
+		phg = encodePHG(float(mytx['power']),float(mytx['antennaAboveGroundLevel']),float(mytx['antennaGainDbi']),direction)
+		if active == '_':
+			pgh = ''
 		
-	#put all variables in the correct order in a list
-	body = [
-		aprsissourcecallsign,
-		'>APRS,TCPIP*:',
-		';',
-		'PS-',
-		callsign,
-		active,
-		timestamp,
-		latitude_to_ddm(latitude),
-		symbol_table,
-		longitude_to_ddm(longitude),
-		symbol,
-		phg,
-		comment,
-		timeSlots,
-		status,
-	]
+		#put all variables in the correct order in a list
+		body = [
+			aprsissourcecallsign,
+			'>APRS,TCPIP*:',
+			';',
+			'PS-',
+			callsign,
+			active,
+			timestamp,
+			latitude_to_ddm(latitude),
+			symbol_table,
+			longitude_to_ddm(longitude),
+			symbol,
+			phg,
+			comment,
+			timeSlots,
+			status,
+		]
 
-	#create the complete message string out of all components
-	data = "".join(body)
-	
-	#transmitters with status ERROR are ignored
-	if mytx['status'] != "ERROR":
+		#create the complete message string out of all components
+		data = "".join(body)
+
+		#transmitters with status ERROR are ignored
 		try:
 			AIS.sendall(data)
 #			print(data) #print the APRS message string to the console

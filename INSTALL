@@ -2,7 +2,7 @@
 # The first section of this file explains the way to get everything up and running. 
 # Scroll down to read more details about this script.
 # Initiative of DAPNet, RWTH Aachen (DL)
-# Ronald Bouwens - PE2KMV, May 11th, 2017
+# Ronald Bouwens - PE2KMV, November 29th, 2018
 
 INSTALLATION
 ============
@@ -12,6 +12,8 @@ The steps below will guide through a successful installation of this script.
 2. Read carefully through the file DEPENDENCIES and make sure all necessary libraries have been installed.
 
 3. Copy the files to a directory of your choice, out of reach of any server application.
+
+3a. Create a MySQL database and table for callsigns to mask from aprs.fi using dapaprs.sql
 
 4. Create a copy of the file config-default.cfg and rename it to config.py. Open the config.py file with your favorite editor and complete the necessary parameters:
 
@@ -41,6 +43,13 @@ The steps below will guide through a successful installation of this script.
 
 4l. [misc]logfile = path and name of the logfile used for any error messages. Make sure you have the correct access rights for the file of your choice.
 
+4m. [maskdb]server = server address of the MySQL database containing callsigns to mask from aprs.fi
+
+4n. [maskdb]username = MySQL database username
+
+4o. [maskdb]passwd = MySQL password
+
+4p. [maskdb]database = database name containing the masking table. Default = 'dapaprs'
 5. The file config.py is the only place to adjust settings. No changes are to be made in any other file.
  
 6. schedule a cron job to run this script on certain intervals. Don't flood APRS-IS by running the script on short intervals. Longer intervals also means a longer latency time where transmitter status changes are not immediately visible via APRS.
