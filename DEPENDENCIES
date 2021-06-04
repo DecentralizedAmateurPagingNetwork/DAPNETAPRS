@@ -3,13 +3,14 @@ Install with
 ``sudo apt-get install python-pip``
 ``sudo pip install aprslib``
 
-https://github.com/rossengeorgiev/aprs-python
-
-Infos on aprs-python: http://aprs-python.readthedocs.io/en/stable/examples.html
 
 python3-pip
 aprslib
-python-urllib3
-python3-configparser
-
-These are not necessary all depencendies.
+urllib3
+configparser
+json
+sys
+math
+time
+datetime
+MySQLdb
