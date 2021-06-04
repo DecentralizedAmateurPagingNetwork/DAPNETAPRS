@@ -1,10 +1,17 @@
+import aprslib
 import configparser
 import urllib3
 import json
 import sys
 import math
+import time
+from time import sleep
+from datetime import datetime
 import MySQLdb
 from logfunctions import *
+from aprslib.util import latitude_to_ddm, longitude_to_ddm, comment_altitude
+
+errorcalls = []
 
 # read configuration
 cfg = configparser.ConfigParser()
@@ -15,9 +22,22 @@ try:
 	mask_database = cfg.get('maskdb','database')
 	mask_username = cfg.get('maskdb','username')
 	mask_password = cfg.get('maskdb','passwd')
+	aprsissourcecallsign = cfg.get('aprsis','sourcecall')
+	aprsisuser = cfg.get('aprsis','username')
+	aprsispasswd = cfg.get('aprsis','password')
 except:
 	logger.error('Cannot read config file')
 	sys.exit(0)
+
+# setup aprs is link
+def APRSConnect(aprsisuser,aprsispassword,aprstelegram):
+	try:
+		ais = aprslib.IS(aprsisuser,passwd = aprsispasswd, host = 'server.pd2rld.nl' ,port = 14580)
+		ais.connect()
+		ais.sendall(aprstelegram)
+	except:
+		aprs_logger.error('Can not connect to APRS-IS')
+		sys.exit(0)
 
 # read dapnet transmitters
 def GetTXData():
@@ -73,8 +93,54 @@ def EncodePHG(power, height, gain, dir):
 		d = 9
 	return ('PHG' + "{:.0f}".format(p) + "{:.0f}".format(h) + "{:.0f}".format(g) + "{:.0f}".format(d))
 
+def LoopTx(trxdata,maskdata):
+	for tx in trxdata:
+		callsign = tx['name'][:7].upper()
+		callsign = "{:<7}".format(callsign)
+		if IsTXMasked(callsign) == False and tx['status'] == 'ONLINE':
+			phg = (EncodePHG(float(tx['power']),float(tx['antennaAboveGroundLevel']),float(tx['antennaGainDbi']),float(tx['antennaDirection'])))
+			latitude = latitude_to_ddm(float(tx['latitude']))
+			longitude = longitude_to_ddm(float(tx['longitude']))
+			timeslots = ' (' + tx['timeSlot'] + ')'
+			txtype = tx['deviceType']
+			timestamp = datetime.utcfromtimestamp(time.time()).strftime("%d%H%M") + 'z'
+
+			# fix fields
+			prefix = '>APRS,TCPIP*:;P-'
+			activetx = '*'
+			symbol = '#'
+			symboltable = 'P'
+			comment = 'DAPNET POCSAG TX'
+
+			# compose message body
+			body = [
+				aprsissourcecallsign,
+				prefix,
+				callsign,
+				activetx,
+				timestamp,
+				latitude,
+				symboltable,
+				longitude,
+				symbol,
+				phg,
+				comment,
+				': ',
+				txtype,
+				timeslots,
+			]
+			aprstelegram = ''.join(body)
+			try:
+				APRSConnect(aprsisuser,aprsispasswd,aprstelegram)
+				sleep(0.1)
+			except:
+				errorcalls.append(tx['name'])
+				print(errorcalls)
+				aprs_logger.error('Can not send APRS telegram (' + aprstelegram + ')')
+logger.debug('Start loop')
 trxdata = GetTXData()
 mask_data = GetMaskData()
-for tx in trxdata:
-	phg = (EncodePHG(float(tx['power']),float(tx['antennaAboveGroundLevel']),float(tx['antennaGainDbi']),float(tx['antennaDirection'])))
+LoopTx(trxdata,mask_data)
+aprs_logger.error(errorcalls)
+logger.debug('Loop completed')
 
