@@ -1,3 +1,12 @@
+June 4th. 2021
+- changed logging function
+- rewrite / streamline code
+- option to select own aprs server
+- reduced procedure to online transmiters only
+- changed APRS comment field to [default comment][transmitter type][time slots]
+- moved config to /etc
+- simplified check with mask table
+
 May 5th. 2017
 - restyled configuration file to be read via configparser
 - switched to urllib3, redesigned http request procedure
