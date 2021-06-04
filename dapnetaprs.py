@@ -14,8 +14,8 @@
 
 # Author: Ralf Wilke DH3WR  dh3wr atREMOVETHIS darc .REMOVETHIS de
 # Author: Ronald Bouwens PE2KMV pe2kmv atREMOVETHIS gmail .REMOVETHISPART c0m
-# Date: 05.05.2017
-# Version 0.2
+# Date: 25.11.2018
+# Version 1.1
 
 import aprslib
 import logging
@@ -30,6 +30,8 @@ import base64
 import math
 import sys
 import configparser
+import os
+import MySQLdb
 
 logging.basicConfig(filename='dapnet.log',level=logging.CRITICAL)
 
@@ -37,11 +39,13 @@ logging.basicConfig(filename='dapnet.log',level=logging.CRITICAL)
 cfg = configparser.RawConfigParser()
 try:
 	#attempt to read the config file config.cfg
-	cfg.read('config.cfg')
+	config_file = os.path.join(os.path.dirname(__file__),'config.cfg')
+	cfg.read(config_file)
 except:
 	#no luck reading the config file, write error and bail out
 	logger.error('APRS script could not find / read config file')
 	sys.exit(0)
+
 
 #setup the logging system. Error logs are written in logfile as determined by config
 logger = logging.getLogger('dapnet')
@@ -60,6 +64,28 @@ hampagerurl = cfg.get('dapnet','baseurl') + cfg.get('dapnet','trxurl')
 aprsisusername = cfg.get('aprsis','username')
 aprsispassword = cfg.get('aprsis','password')
 aprsissourcecallsign = cfg.get('aprsis','sourcecall')
+
+#read settings for maskind database
+maskserver = cfg.get('maskdb','server')
+maskuser = cfg.get('maskdb','username')
+maskpasswd = cfg.get('maskdb','passwd')
+maskdatabase = cfg.get('maskdb','database')
+
+#open database connection
+db = MySQLdb.connect(host=maskserver,user=maskuser,passwd=maskpasswd,db=maskdatabase)
+
+if not (db):
+	#bail out if database connection fails
+	logger.error('No connecting to masking database')
+	sys.exit()
+
+#read calls from masking database and table
+cur = db.cursor()
+cur.execute("SELECT MASK_CALL FROM masktable")
+excl_result = cur.fetchall()
+excl_list = []
+for row in excl_result:
+	excl_list.append(row[0])
 
 #create a PHG code using TRX power, antenna height and antenna gain from DAPNET data
 def encodePHG (power, height, gain, dir):
@@ -85,8 +111,8 @@ def encodePHG (power, height, gain, dir):
 
 
 #open the link to APRS-IS. If connnection can't be established, print warning to console, print warning to error log and bail out
-AIS = aprslib.IS(aprsisusername, passwd=aprsispassword, port=14580)
 try:
+	AIS = aprslib.IS(aprsisusername, passwd=aprsispassword, port=14580)
 	AIS.connect()
 except:
 	print('Invalid APRS credentials')
@@ -120,10 +146,12 @@ for tx in range (0, len(dapnetdata)):
 	if mytx['status'] == 'ONLINE': #determine whether DAPNET returns status ONLINE / OFFLINE
 		#pager transmitter is online, add in 'create object' symbol
 		active = '*'
+		symbol = '#' #green digi star - transmitter online
 	else:
 		#pager transmitter is offline, add in 'kill object' symbol
 		#note that aprs.fi doesn't support killing objects!
 		active = '_'
+		symbol = 'n' #red triangle - transmitter offline
 
 	callsign = mytx['name'].upper() #station call is converted into upper case
 	
@@ -132,13 +160,12 @@ for tx in range (0, len(dapnetdata)):
 		callsign = callsign[:6]
 	callsign = "{:<6}".format(callsign)
 	symbol_table = 'P' #add in APRS symbol character
-	symbol = '#' #add in APRS symbol
+#	symbol = '#' #add in APRS symbol
 	altitude = None #don't use altitude
 	comment = 'DAPNET POCSAG Transmitter(' #add comment to object
 	timeSlots = mytx['timeSlot'] + ')' #extract timeslots for station
 	status = '(' + mytx['status'] + ')'
 	timestamp = datetime.utcfromtimestamp(time.time()).strftime("%d%H%M") + 'z'
-	
 	#differentiate between omnidirectonal antenna or beam
 	if mytx['antennaType'] == 'OMNI':
 		direction = -1 #add in string to mark 'omnidirectional'
@@ -149,7 +176,6 @@ for tx in range (0, len(dapnetdata)):
 	phg = encodePHG(float(mytx['power']),float(mytx['antennaAboveGroundLevel']),float(mytx['antennaGainDbi']),direction)
 	if active == '_':
 		pgh = ''
-		
 	#put all variables in the correct order in a list
 	body = [
 		aprsissourcecallsign,
@@ -168,12 +194,11 @@ for tx in range (0, len(dapnetdata)):
 		timeSlots,
 		status,
 	]
-
 	#create the complete message string out of all components
 	data = "".join(body)
-	
 	#transmitters with status ERROR are ignored
-	if mytx['status'] != "ERROR":
+	#edit March 29th. only show online transmitters
+	if (mytx['status'] == "ONLINE") & (str.strip(callsign) not in excl_list):
 		try:
 			AIS.sendall(data)
 #			print(data) #print the APRS message string to the console
