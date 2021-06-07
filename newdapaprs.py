@@ -11,6 +11,7 @@ import MySQLdb
 from logfunctions import *
 from aprslib.util import latitude_to_ddm, longitude_to_ddm, comment_altitude
 
+# In case callsigns aren't published these will be collected in this list
 errorcalls = []
 
 # read configuration
@@ -53,6 +54,8 @@ def GetTXData():
 		logger.error('Cannot retrieve DAPNET transmitter data')
 		sys.exit(0)
 
+# read data from masking table
+# on fail script will be quited
 def GetMaskData():
 	try:
 		db = MySQLdb.connect(host=mask_server,user=mask_username,passwd=mask_password,db = mask_database)
@@ -67,12 +70,14 @@ def GetMaskData():
 		logger.error('Cannot connect to mask database')
 		sys.exit(1)
 
+# Determine whether or not callsign will be published as object
 def IsTXMasked(callsign):
 	if callsign in mask_data:
 		return(True)
 	else:
 		return(False)
 
+# Encode PHG data using
 def EncodePHG(power, height, gain, dir):
 	p = round(math.sqrt(power))
 	if p > 9:
@@ -96,6 +101,7 @@ def EncodePHG(power, height, gain, dir):
 		d = 9
 	return ('PHG' + "{:.0f}".format(p) + "{:.0f}".format(h) + "{:.0f}".format(g) + "{:.0f}".format(d))
 
+# Main loop through transmitter data as received from DAPNET API
 def LoopTx(trxdata,maskdata):
 	for tx in trxdata:
 		callsign = tx['name'][:7].upper()
