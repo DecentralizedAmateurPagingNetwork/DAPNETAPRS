@@ -25,6 +25,9 @@ try:
 	aprsissourcecallsign = cfg.get('aprsis','sourcecall')
 	aprsisuser = cfg.get('aprsis','username')
 	aprsispasswd = cfg.get('aprsis','password')
+	aprsishost = cfg.get('aprsis','host')
+	aprsisport = int(cfg.get('aprsis','port'))
+	aprsissleep = float(cfg.get('aprsis','sleeptime'))
 except:
 	logger.error('Cannot read config file')
 	sys.exit(0)
@@ -32,7 +35,7 @@ except:
 # setup aprs is link
 def APRSConnect(aprsisuser,aprsispassword,aprstelegram):
 	try:
-		ais = aprslib.IS(aprsisuser,passwd = aprsispasswd, host = 'server.pd2rld.nl' ,port = 14580)
+		ais = aprslib.IS(aprsisuser,passwd = aprsispasswd, host = aprsishost ,port = aprsisport)
 		ais.connect()
 		ais.sendall(aprstelegram)
 	except:
@@ -132,15 +135,14 @@ def LoopTx(trxdata,maskdata):
 			aprstelegram = ''.join(body)
 			try:
 				APRSConnect(aprsisuser,aprsispasswd,aprstelegram)
-				sleep(0.1)
+				sleep(aprsissleep)
 			except:
-				errorcalls.append(tx['name'])
-				print(errorcalls)
+				errorcalls.append(callsign)
 				aprs_logger.error('Can not send APRS telegram (' + aprstelegram + ')')
 logger.debug('Start loop')
 trxdata = GetTXData()
 mask_data = GetMaskData()
 LoopTx(trxdata,mask_data)
-aprs_logger.error(errorcalls)
+if len(errorcalls) > 0:
+	aprs_logger.error(errorcalls)
 logger.debug('Loop completed')
-
